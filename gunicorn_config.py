@@ -20,7 +20,8 @@ def post_worker_init(worker):
 
 
 def worker_exit(server, worker):
-    worker.scheduler.shutdown()
+    if hasattr(worker, "scheduler"):
+        worker.scheduler.shutdown()
 
 
 workers = 1
