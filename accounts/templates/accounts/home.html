@@ -1,0 +1,14 @@
+{% load prettify_bytes %}
+
+{% if user.is_authenticated %}
+<p>Hello :)</p>
+<p>Config: {{ xray_user.shadowsocks_config }}</p>
+<p>Usage: {{ xray_user.used_traffic|prettify_bytes }} of {{ xray_user.traffic_limit|prettify_bytes }}</p>
+<form action="{% url 'config-reset-credentials' %}" method="post">
+    <input type="submit" value="Reset config credetial">
+    {% csrf_token %}
+</form>
+<p><a href="{% url 'logout' %}">Logout</a></p>
+{% else %}
+<p>Please <a href="{% url 'login' %}">login</a>.</p>
+{% endif %}

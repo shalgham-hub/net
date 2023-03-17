@@ -1,0 +1,9 @@
+{% if error %}
+    {{ error }}
+{% endif %}
+
+<form action="{% url 'add-accounts' %}" method="post">
+  {{ form }}
+  <input type="submit" value="add" />
+  {% csrf_token %}
+</form>
