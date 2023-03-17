@@ -27,7 +27,11 @@ _base_url = settings.MARZBAN_BASE_URL
 
 
 class XrayError(Exception):
-    pass
+    def __init__(self, details) -> None:
+        self.details = details
+
+    def __str__(self) -> str:
+        return str(self.details)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +57,7 @@ def xray_create_user(username: str, traffic_limit: int):
 
     response = _session.post(url=url, json=data)
     if response.status_code not in [409, 200]:
-        raise XrayError()
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
     data = response.json()
     link = [item for item in data['links'] if item.startswith('ss')]
@@ -75,7 +79,7 @@ def xray_get_user(username: str) -> XrayUser | None:
         return None
 
     if response.status_code != 200:
-        raise XrayError()
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
     data = response.json()
     link = [item for item in data['links'] if item.startswith('ss')]
@@ -94,7 +98,7 @@ def xray_reset_user_credentials(username: str) -> None:
     data = {"proxies": {'shadowsocks': {"password": get_random_string(length=32)}}}
     response = _session.put(url=url, json=data)
     if response.status_code not in [404, 200]:
-        raise XrayError
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
 
 def xray_reset_user_usage(username: str) -> None:
@@ -104,7 +108,7 @@ def xray_reset_user_usage(username: str) -> None:
     if response.status_code == 404:
         return
     if response.status_code != 200:
-        raise XrayError()
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
 
 def xray_update_traffic_limit(username: str, traffic_limit: int) -> None:
@@ -113,7 +117,7 @@ def xray_update_traffic_limit(username: str, traffic_limit: int) -> None:
     data = {"data_limit": traffic_limit}
     response = _session.put(url=url, json=data)
     if response.status_code not in [404, 200]:
-        raise XrayError
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
 
 def xray_activate_user(username: str) -> None:
@@ -122,7 +126,7 @@ def xray_activate_user(username: str) -> None:
     data = {"status": "active"}
     response = _session.put(url=url, json=data)
     if response.status_code not in [404, 200]:
-        raise XrayError
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
 
 def xray_deactivate_user(username: str) -> None:
@@ -131,7 +135,7 @@ def xray_deactivate_user(username: str) -> None:
     data = {"status": "disabled"}
     response = _session.put(url=url, json=data)
     if response.status_code not in [404, 200]:
-        raise XrayError
+        raise XrayError({'status': response.status_code, 'body': response.json()})
 
 
 def update_remarks(remark: set) -> None:
