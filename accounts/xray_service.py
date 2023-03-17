@@ -43,6 +43,8 @@ class XrayUser:
 
 
 def xray_create_user(username: str, traffic_limit: int):
+    if not username:
+        raise XrayError(details={"message": "invalid username.", 'username': username})
     path = '/api/user'
     url = urljoin(_base_url, path)
 
@@ -71,6 +73,8 @@ def xray_create_user(username: str, traffic_limit: int):
 
 
 def xray_get_user(username: str) -> XrayUser | None:
+    if not username:
+        return
     path = f'/api/user/{username}'
     url = urljoin(_base_url, path)
     response = _session.get(url)
@@ -93,6 +97,8 @@ def xray_get_user(username: str) -> XrayUser | None:
 
 
 def xray_reset_user_credentials(username: str) -> None:
+    if not username:
+        return
     path = f'/api/user/{username}'
     url = urljoin(_base_url, path)
     data = {"proxies": {'shadowsocks': {"password": get_random_string(length=32)}}}
@@ -102,6 +108,8 @@ def xray_reset_user_credentials(username: str) -> None:
 
 
 def xray_reset_user_usage(username: str) -> None:
+    if not username:
+        return
     path = f'/api/user/{username}/reset'
     url = urljoin(_base_url, path)
     response = _session.post(url=url)
@@ -112,6 +120,8 @@ def xray_reset_user_usage(username: str) -> None:
 
 
 def xray_update_traffic_limit(username: str, traffic_limit: int) -> None:
+    if not username:
+        return
     path = f'/api/user/{username}'
     url = urljoin(_base_url, path)
     data = {"data_limit": traffic_limit}
@@ -121,6 +131,8 @@ def xray_update_traffic_limit(username: str, traffic_limit: int) -> None:
 
 
 def xray_activate_user(username: str) -> None:
+    if not username:
+        return
     path = f'/api/user/{username}'
     url = urljoin(_base_url, path)
     data = {"status": "active"}
@@ -130,6 +142,8 @@ def xray_activate_user(username: str) -> None:
 
 
 def xray_deactivate_user(username: str) -> None:
+    if not username:
+        return
     path = f'/api/user/{username}'
     url = urljoin(_base_url, path)
     data = {"status": "disabled"}

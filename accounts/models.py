@@ -47,6 +47,9 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
         from .xray_service import xray_activate_user, xray_deactivate_user
 
+        if not self.username:
+            return
+
         if self.is_active:
             xray_activate_user(username=self.username)
         else:
