@@ -165,3 +165,28 @@ def update_remarks(remark: set) -> None:
             host['remark'] = remark
 
     _session.put(url=url, json=result)
+
+
+@dataclass(frozen=True, slots=True)
+class SystemInfo:
+    total_memory_bytes: int
+    used_memory_bytes: int
+    total_users_count: int
+    active_users_count: int
+    total_received_traffic_bytes: int
+    total_transmitted_traffic_bytes: int
+
+
+def xray_get_system_info() -> SystemInfo:
+    path = '/api/system'
+    url = urljoin(_base_url, path)
+    response = _session.get(url=url)
+    data = response.json()
+    return SystemInfo(
+        total_memory_bytes=data['mem_total'],
+        used_memory_bytes=data['mem_used'],
+        active_users_count=data['users_active'],
+        total_users_count=data['total_user'],
+        total_received_traffic_bytes=data['incoming_bandwidth'],
+        total_transmitted_traffic_bytes=data['outgoing_bandwith'],
+    )

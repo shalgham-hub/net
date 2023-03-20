@@ -4,17 +4,19 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.views import LoginView as _LoginView
 from django.contrib.auth.views import LogoutView as _LogoutView
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
 from django.http.request import HttpRequest
 from django.http.response import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.crypto import constant_time_compare
 from django.views import View
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Gauge, generate_latest
 
 from .models import User
 from .services import InvalidToken, add_user, reset_password, send_password_reset_token
-from .xray_service import xray_create_user, xray_get_user, xray_reset_user_credentials
+from .xray_service import xray_create_user, xray_get_system_info, xray_get_user, xray_reset_user_credentials
 
 
 class PasswordResetView(View):
@@ -173,3 +175,97 @@ class AddAccounts(LoginRequiredMixin, View):
             )
 
         return HttpResponse(content="OK")
+
+
+class MetricsView(View):
+    def has_access(self, request) -> bool:
+        """
+        adopted from https://github.com/encode/django-rest-framework/blob/c9e7b68a4c1db1ac60e962053380acda549609f3/rest_framework/authentication.py
+        """
+        auth = request.META.get('HTTP_AUTHORIZATION', b'')
+        if isinstance(auth, str):
+            # Work around django test client oddness
+            auth = auth.encode('iso-8859-1')
+        auth = auth.split()
+
+        if not auth or auth[0].lower() != 'bearer'.encode():
+            return False
+
+        if len(auth) == 1:
+            return False
+
+        elif len(auth) > 2:
+            return False
+
+        try:
+            token = auth[1].decode()
+        except UnicodeError:
+            return False
+
+        if settings.METRICS_ACCESS_TOKEN is None:
+            return False
+
+        if not constant_time_compare(token, settings.METRICS_ACCESS_TOKEN):
+            return False
+
+        return True
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        if not self.has_access(request=request):
+            raise PermissionDenied()
+
+        xray_system_info = xray_get_system_info()
+        registry = CollectorRegistry(auto_describe=True)
+        namespace = settings.METRICS_NAMESPACE or ""
+
+        total_memory = Gauge(
+            name='total_memory_bytes',
+            documentation="Total available memory in system",
+            namespace=namespace,
+            registry=registry,
+        )
+        total_memory.set(xray_system_info.total_memory_bytes)
+
+        used_memory = Gauge(
+            name='used_memory_bytes',
+            documentation="Used memory by all process in system",
+            namespace=namespace,
+            registry=registry,
+        )
+        used_memory.set(xray_system_info.used_memory_bytes)
+
+        total_users_count = Gauge(
+            name='total_users_count',
+            documentation="Total users count",
+            namespace=namespace,
+            registry=registry,
+        )
+        total_users_count.set(xray_system_info.total_users_count)
+
+        active_users_count = Gauge(
+            name='active_users_count',
+            documentation="Active users count",
+            namespace=namespace,
+            registry=registry,
+        )
+        active_users_count.set(xray_system_info.active_users_count)
+
+        total_transmitted_traffic = Gauge(
+            name='total_transmitted_traffic_bytes',
+            documentation="Total transmitted data in bytes",
+            namespace=namespace,
+            registry=registry,
+        )
+        total_transmitted_traffic.set(xray_system_info.total_transmitted_traffic_bytes)
+
+        total_received_traffic = Gauge(
+            name='total_received_traffic_bytes',
+            documentation="Total received data in bytes",
+            namespace=namespace,
+            registry=registry,
+        )
+        total_received_traffic.set(xray_system_info.total_received_traffic_bytes)
+
+        metrics = generate_latest(registry=registry)
+
+        return HttpResponse(content=metrics, content_type=CONTENT_TYPE_LATEST)

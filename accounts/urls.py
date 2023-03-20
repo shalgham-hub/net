@@ -6,6 +6,7 @@ from .views import (
     HomeView,
     LoginView,
     LogoutView,
+    MetricsView,
     PasswordResetView,
     VerifyPasswordResetView,
 )
@@ -22,4 +23,5 @@ urlpatterns = [
     path('', HomeView.as_view(), name='home'),
     path('web/rest-credentials/', ConfigResetCredentials.as_view(), name='config-reset-credentials'),
     path('web/accounts/add/', AddAccounts.as_view(), name='add-accounts'),
+    path('web/metrics/', MetricsView.as_view(), name='metrics'),
 ]

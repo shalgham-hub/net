@@ -9,6 +9,11 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG = config("DEBUG", cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+
+POD_IP = config("POD_IP", default="")
+if POD_IP:
+    ALLOWED_HOSTS.append(POD_IP)
+
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv(), default="")
 
 INSTALLED_APPS = [
@@ -94,3 +99,7 @@ LOGIN_URL = "login"
 XRAY_REMARK = config("XRAY_REMARK", default="Server")
 
 XRAY_SERVER_CERTIFICATE_FILE = config("XRAY_SERVER_CERTIFICATE_FILE", default=None)
+
+METRICS_NAMESPACE = config("METRICS_NAMESPACE", default="xray")
+
+METRICS_ACCESS_TOKEN = config("METRICS_ACCESS_TOKEN", default=None)
