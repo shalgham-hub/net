@@ -1,11 +1,9 @@
 from django import forms
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.contrib.auth.views import LoginView as _LoginView
 from django.contrib.auth.views import LogoutView as _LogoutView
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.validators import validate_email
 from django.http.request import HttpRequest
 from django.http.response import HttpResponse
 from django.shortcuts import redirect, render
@@ -15,7 +13,7 @@ from django.views import View
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Gauge, generate_latest
 
 from .models import User
-from .services import InvalidToken, add_user, reset_password, send_password_reset_token
+from .services import InvalidToken, reset_password, send_password_reset_token
 from .xray_service import xray_create_user, xray_get_system_info, xray_get_user, xray_reset_user_credentials
 
 
@@ -130,53 +128,6 @@ class ConfigResetCredentials(LoginRequiredMixin, View):
         username = request.user.username
         xray_reset_user_credentials(username=username)
         return redirect("home")
-
-
-class AddAccounts(LoginRequiredMixin, View):
-    class Form(forms.Form):
-        info = forms.CharField(widget=forms.Textarea())
-
-    def get(self, request: HttpRequest) -> HttpResponse:
-        if not request.user.is_staff or not request.user.is_superuser:
-            return self.handle_no_permission()
-
-        form = self.Form()
-
-        return render(request=request, template_name="accounts/add_accounts.html", context={'form': form})
-
-    def post(self, request: HttpRequest) -> HttpResponse:
-        if not request.user.is_staff or not request.user.is_superuser:
-            return self.handle_no_permission()
-
-        form = self.Form(data=request.POST)
-        if not form.is_valid():
-            return render(request=request, template_name="accounts/add_accounts.html", context={'form': form})
-
-        info = form.cleaned_data['info']
-        info_list = []
-        validate_username = UnicodeUsernameValidator()
-        try:
-            for item in info.split('\n'):
-                email, username = item.split(',')
-                email, username = email.strip(), username.strip()
-                validate_email(email)
-                validate_username(username)
-                info_list.append((email, username))
-        except Exception:
-            return render(request=request, template_name="accounts/add_accounts.html", context={'form': form})
-
-        try:
-            for email, username in info_list:
-                add_user(email=email, username=username)
-        except Exception as ex:
-            message = str(ex)
-            return render(
-                request=request,
-                template_name="accounts/add_accounts.html",
-                context={'form': form, "error": message},
-            )
-
-        return HttpResponse(content="OK")
 
 
 class MetricsView(View):

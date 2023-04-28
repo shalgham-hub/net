@@ -85,17 +85,6 @@ def reset_users_data_usage(users: Optional[list[User]] = None) -> None:
         xray_reset_user_usage(username=user.username)
 
 
-def add_user(email: str, username: str) -> User:
-    user = User.objects.filter(email=email).first()
-    if user:
-        return user
-    user = User(email=email, username=username)
-    user.set_password(None)
-    user.save()
-
-    return user
-
-
 __all__ = [
     'InvalidToken',
     'dict_encrypt',

@@ -1,7 +1,6 @@
 from django.urls import path
 
 from .views import (
-    AddAccounts,
     ConfigResetCredentials,
     HomeView,
     LoginView,
@@ -22,6 +21,5 @@ urlpatterns = [
     path('web/logout/', LogoutView.as_view(), name='logout'),
     path('', HomeView.as_view(), name='home'),
     path('web/rest-credentials/', ConfigResetCredentials.as_view(), name='config-reset-credentials'),
-    path('web/accounts/add/', AddAccounts.as_view(), name='add-accounts'),
     path('web/metrics/', MetricsView.as_view(), name='metrics'),
 ]

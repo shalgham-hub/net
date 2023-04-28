@@ -1,10 +1,31 @@
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as _UserAdmin
+from django.contrib.auth.forms import UsernameField
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from .models import TrafficPolicy, User
 from .services import reset_users_data_usage
+
+
+class UserCreationForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("email", 'username')
+        field_classes = {"username": UsernameField}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self._meta.model.USERNAME_FIELD in self.fields:
+            self.fields[self._meta.model.USERNAME_FIELD].widget.attrs["autofocus"] = True
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(None)
+        if commit:
+            user.save()
+        return user
 
 
 @admin.register(User)
@@ -38,12 +59,14 @@ class UserAdmin(_UserAdmin):
             None,
             {
                 'classes': ('wide',),
-                'fields': ('email', 'password1', 'password2'),
+                'fields': ('email', 'username', 'traffic_policy'),
             },
         ),
     )
 
     actions = ["action_reset_usage"]
+
+    add_form = UserCreationForm
 
     @admin.action(description="Reset Traffic Usage")
     def action_reset_usage(self, request, queryset) -> None:
