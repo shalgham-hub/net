@@ -110,12 +110,14 @@ class LogoutView(_LogoutView):
 
 class HomeView(LoginRequiredMixin, View):
     def get(self, request: HttpRequest) -> HttpResponse:
-        username = request.user.username
+        user: User = request.user
+        username = user.username
         xray_user = xray_get_user(username=username)
         if not xray_user:
-            xray_user = xray_create_user(
-                username=username, traffic_limit=settings.MONTHLY_TRAFFIC_LIMIT_BYTES
-            )
+            user_quota = settings.MONTHLY_TRAFFIC_LIMIT_BYTES
+            if getattr(user, 'traffic_policy', None):
+                user_quota = user.traffic_policy.quota
+            xray_user = xray_create_user(username=username, traffic_limit=user_quota)
         return render(
             request=request,
             template_name='accounts/home.html',

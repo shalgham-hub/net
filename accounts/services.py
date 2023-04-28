@@ -62,9 +62,19 @@ def reset_password(token: str, new_password: str) -> User:
     return user
 
 
-def sync_traffic_limit() -> None:
-    for user in User.objects.all():
-        xray_update_traffic_limit(username=user.username, traffic_limit=settings.MONTHLY_TRAFFIC_LIMIT_BYTES)
+def sync_traffic_limit(users: Optional[list[User]] = None) -> None:
+    if users is None:
+        users: list[User] = list(User.objects.select_related('traffic_policy').all())
+    for user in users:
+        if not user.username:
+            continue
+
+        user_quota = settings.MONTHLY_TRAFFIC_LIMIT_BYTES
+
+        if user.traffic_policy:
+            user_quota = user.traffic_policy.quota
+
+        xray_update_traffic_limit(username=user.username, traffic_limit=user_quota)
 
 
 def reset_users_data_usage(users: Optional[list[User]] = None) -> None:

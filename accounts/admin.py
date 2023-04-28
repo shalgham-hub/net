@@ -3,14 +3,15 @@ from django.contrib.auth.admin import UserAdmin as _UserAdmin
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
-from .models import User
+from .models import TrafficPolicy, User
 from .services import reset_users_data_usage
 
 
 @admin.register(User)
 class UserAdmin(_UserAdmin):
     ordering = ['email']
-    list_display = ('email', 'username', 'is_active', 'is_staff')
+    list_display = ('email', 'username', 'is_active', 'is_staff', 'traffic_policy')
+    list_editable = ['traffic_policy']
     search_fields = ('email', 'first_name', 'last_name')
     list_display_links = ['email']
 
@@ -49,3 +50,26 @@ class UserAdmin(_UserAdmin):
         users = list(queryset)
         reset_users_data_usage(users=users)
         self.message_user(request, gettext("Data usage reset for selected users."), messages.SUCCESS)
+
+
+class UserInline(admin.StackedInline):
+    model = User
+    fk_name = 'traffic_policy'
+    fields = ['username']
+    readonly_fields = ['email', 'username']
+    raw_id_fields = ['traffic_policy']
+
+    def has_add_permission(self, *args, **kwargs) -> bool:
+        return False
+
+    def has_change_permission(self, *args, **kwargs) -> bool:
+        return False
+
+    def has_delete_permission(self, *args, **kwargs) -> bool:
+        return False
+
+
+@admin.register(TrafficPolicy)
+class TrafficPolicyAdmin(admin.ModelAdmin):
+    fields = ['name', 'quota']
+    inlines = [UserInline]

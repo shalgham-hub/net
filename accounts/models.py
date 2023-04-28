@@ -4,6 +4,7 @@ from django.contrib.auth.models import UserManager as _UserManager
 from django.db import models
 from django.db.models.constraints import UniqueConstraint
 from django.utils.translation import gettext_lazy as _
+from .utils import prettify_bytes
 
 
 class UserManager(_UserManager):
@@ -39,12 +40,21 @@ class UserManager(_UserManager):
 class User(AbstractUser):
     email = models.EmailField(_("email address"), unique=True, max_length=50)
 
+    traffic_policy = models.ForeignKey(
+        'accounts.TrafficPolicy',
+        related_name="users",
+        related_query_name="users",
+        on_delete=models.PROTECT,
+        null=True,
+    )
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UserManager()
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
+        from .services import sync_traffic_limit
         from .xray_service import xray_activate_user, xray_deactivate_user
 
         if not self.username:
@@ -54,6 +64,8 @@ class User(AbstractUser):
             xray_activate_user(username=self.username)
         else:
             xray_deactivate_user(username=self.username)
+
+        sync_traffic_limit(users=[self])
 
 
 class TrafficResetLog(models.Model):
@@ -67,3 +79,18 @@ class TrafficResetLog(models.Model):
 
     class Meta:
         constraints = [UniqueConstraint(fields=["date", "user"], name="rest_log_user_date_uniq")]
+
+
+class TrafficPolicy(models.Model):
+    name = models.CharField(_("Policy Name"), max_length=128)
+    quota = models.PositiveBigIntegerField(_('Quota (bytes)'))
+
+    def save(self, *args, **kwargs) -> None:
+        super().save(*args, **kwargs)
+
+        from .services import sync_traffic_limit
+
+        sync_traffic_limit(users=list(self.users.select_related('traffic_policy').all()))
+
+    def __str__(self) -> str:
+        return f"{self.name} ({prettify_bytes(self.quota)})"

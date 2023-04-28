@@ -61,6 +61,9 @@ def xray_create_user(username: str, traffic_limit: int):
     if response.status_code not in [409, 200]:
         raise XrayError({'status': response.status_code, 'body': response.json()})
 
+    if response.status_code == 409:
+        return xray_get_user(username=username)
+
     data = response.json()
     link = [item for item in data['links'] if item.startswith('ss')]
 
